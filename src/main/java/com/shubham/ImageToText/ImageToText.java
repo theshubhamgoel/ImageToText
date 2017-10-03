@@ -17,7 +17,7 @@ public class ImageToText {
     public static void main(String[] args) throws Exception {
 
         String folder = "/Users/shubhgoe/Desktop/extra/sample/";
-        File input = new File(folder + "4.png");
+        File input = new File(folder + "5.png");
         BufferedImage image = ImageIO.read(input);
 
         matrix = new Pixel[image.getHeight()][image.getWidth()];
@@ -49,7 +49,8 @@ public class ImageToText {
             // System.out.println(letterBox);
 
             // Special case for I
-            if ((letterBox.bottom - letterBox.top) / (letterBox.right - letterBox.left) > 5) {
+            if ((letterBox.right - letterBox.left) != 0
+                    && (letterBox.bottom - letterBox.top) / (letterBox.right - letterBox.left) > 5) {
                 ans += "I";
                 continue;
             }
@@ -68,9 +69,26 @@ public class ImageToText {
             String alphabetCode = getAlphabetCode(ninePointer);
             System.out.println(alphabetCode);
             String alphabet = getAlphabet(alphabetCode, properties);
+
+            // Special Cases for H and N
+            if (alphabet.equals("N")) {
+                int rowMiddle = (letterBox.top + letterBox.bottom) / 2;
+                if (isHorizontolLine(rowMiddle, letterBox.left, letterBox.right, tempMatrix)) {
+                    alphabet = "H";
+                }
+            }
+
+            // Special Cases for G and O
+            if (alphabet.equals("O")) {
+                int rowMiddle = (letterBox.top + letterBox.bottom) / 2;
+                if (!isConnectedArc(rowMiddle, letterBox.right + 1, letterBox.top, tempMatrix)) {
+                    alphabet = "G";
+                }
+            }
+
             ans += alphabet;
 
-            // createBoundrary(letterBox, tempMatrix);
+            createBoundrary(letterBox, tempMatrix);
         }
         // System.out.println(x);
         System.out.println("Sir we found some text in the image : " + ans);
@@ -79,6 +97,40 @@ public class ImageToText {
         File ouptut = new File(folder + "grayscale.png");
         ImageIO.write(image, "png", ouptut);
 
+    }
+
+    private static boolean isConnectedArc(int row, int col, int top, Pixel[][] tempMatrix) {
+        for (int i = row; i > top; i--) {
+            if (tempMatrix[i - 1][col].avg == 0) {
+                // do nothing
+            } else if (tempMatrix[i - 1][col + 1].avg == 0) {
+                col--;
+            } else if (tempMatrix[i - 1][col - 1].avg == 0) {
+                col--;
+            } else if (tempMatrix[i - 1][col - 2].avg == 0) {
+                col -= 2;
+            } else if (tempMatrix[i - 1][col - 3].avg == 0) {
+                col -= 3;
+            } else if (tempMatrix[i - 1][col - 4].avg == 0) {
+                col -= 4;
+            } else {
+                return false;
+            }
+
+            while (tempMatrix[i - 1][col].avg == 0) {
+                col++;
+            }
+        }
+        return true;
+
+    }
+
+    private static boolean isHorizontolLine(int row, int left, int right, Pixel[][] tempMatrix) {
+        for (int i = left; i < right; i++) {
+            if (tempMatrix[row][i].avg != 0)
+                return false;
+        }
+        return true;
     }
 
     private static String getAlphabetCode(int[] ninePointer) {
@@ -253,7 +305,7 @@ public class ImageToText {
                 int avg = (r + g + b) / 3;
 
                 // round off
-                avg = avg > 100 ? 1 : 0;
+                avg = avg > 100 ? 255 : 0;
 
                 // replace RGB value with avg
                 p = (a << 24) | (avg << 16) | (avg << 8) | avg;
